@@ -1,0 +1,24 @@
+#新增用户
+mysql -uroot -pNiu*2017
+# 如果存在用户则删除，删除都刷新权限
+delete from user where user='activiti';
+FLUSH PRIVILEGES;
+create user 'activiti'@'%' identified by 'Niu*2017';
+grant all on *.* to 'activiti'@'%';
+#新用户的登陆
+mysql -uactiviti -pNiu*2017
+#新增数据库
+DROP DATABASE if EXISTS db_activiti;
+CREATE DATABASE db_activiti DEFAULT CHARACTER SET utf8;
+#配置数据源
+在tomcate>conf>context.xml>Context 节点下新增如下数据源
+<Resource name="jdbc/activitiDB" auth="Container"
+type="javax.sql.DataSource"
+driverClassName="com.mysql.jdbc.Driver"
+url="jdbc:mysql://localhost:3306/db_activiti"
+username="activiti"
+password="Niu*2017"
+maxActive="50"
+maxIdle="30"
+maxWait="10000"/>
+
