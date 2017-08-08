@@ -180,6 +180,7 @@
                     <include>**/*.properties</include>
                     <include>**/*.bpmn</include>
                     <include>**/*.png</include>
+                    <include>**/*.zip</include>
                 </includes>
             </resource>
         </resources>
