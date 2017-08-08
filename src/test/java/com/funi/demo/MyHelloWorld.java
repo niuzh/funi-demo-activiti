@@ -3,6 +3,9 @@ package com.funi.demo;
 import org.activiti.engine.ProcessEngine;
 import org.activiti.engine.ProcessEngineConfiguration;
 import org.activiti.engine.ProcessEngines;
+import org.activiti.engine.TaskService;
+import org.activiti.engine.history.HistoricTaskInstance;
+import org.activiti.engine.history.HistoricVariableInstance;
 import org.activiti.engine.repository.Deployment;
 import org.activiti.engine.repository.ProcessDefinition;
 import org.activiti.engine.runtime.ProcessInstance;
@@ -13,6 +16,7 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.ZipInputStream;
 
 /**
  * @author zhihuan.niu on 8/7/17.
@@ -49,7 +53,16 @@ public class MyHelloWorld {
                 .addClasspathResource("diagrams/MyProcessDemo.png")
                 .name("MyProcessDemo")
                 .deploy();//完成部署
-
+        /*InputStream inputStream=this.getClass()  // 获取当前class对象
+                .getClassLoader()   // 获取类加载器
+                .getResourceAsStream("MyProcessDemo.zip"); // 获取指定文件资源流
+        ZipInputStream zipInputStream=new ZipInputStream(inputStream); // 实例化zip输入流对象
+        // 获取部署对象
+        Deployment deployment=processEngine().getRepositoryService() // 部署Service
+                .createDeployment()  // 创建部署
+                .name("HelloWorld流程2")  // 流程名称
+                .addZipInputStream(zipInputStream)  // 添加zip是输入流
+                .deploy(); // 部署*/
         System.out.println("部署ID：" + deployment.getId());//部署ID:1
         System.out.println("部署时间：" + deployment.getDeploymentTime());//部署时间
 
@@ -123,7 +136,7 @@ public class MyHelloWorld {
     /**完成任务*/
     @Test
     public void completeTask(){
-        String taskID = "40003";
+        String taskID = "45005";
         Map<String,Object> map=new HashMap<>();
         map.put("flag",1);
         processEngine().getTaskService().complete(taskID,map);
@@ -134,5 +147,93 @@ public class MyHelloWorld {
 act_hi_procinst 历史流程实例实例表加了一条流程实例相关信息的数据（包括开始时间，结束时间等等信息）；
 act_hi_identitylink 历史流程实例参数者的表加了一条数据；
 act_hi_actinst 历史活动节点表加了三条流程活动节点信息的数据（每个流程实例具体的执行活动节点的信息）；*/
+    }
+
+    /**设置流程变量*/
+    @Test
+    public void setVariables(){
+        /*在流程执行或者任务执行的过程中，用于设置和获取变量，使用流程变量在流程传递的过程中传递业务参数。
+  对应的表：
+  act_ru_variable：正在执行的流程变量表
+  act_hi_varinst：流程变量历史表*/
+        /**与任务（正在执行）*/
+        TaskService taskService = processEngine().getTaskService();
+        //任务ID
+        String taskId = "45005"; //act_ru_task表里id
+        /**一：设置流程变量，使用基本数据类型*/
+//      taskService.setVariableLocal(taskId, "请假天数", 5);//与任务ID绑定
+//      taskService.setVariable(taskId, "请假日期", new Date());
+//      taskService.setVariable(taskId, "请假原因", "回家探亲，一起吃个饭");
+        /**二：设置流程变量，使用javabean类型*/
+        /**
+         * 当一个javabean（实现序列号）放置到流程变量中，要求javabean的属性不能再发生变化
+         *    * 如果发生变化，再获取的时候，抛出异常
+         *
+         * 解决方案：在Person对象中添加：
+         *      private static final long serialVersionUID = 6757393795687480331L;
+         *      同时实现Serializable
+         * */
+        Person p = new Person();
+        p.setId(20);
+        p.setName("翠花");
+        taskService.setVariable(taskId, "人员信息(添加固定版本)", p);
+
+        System.out.println("设置流程变量成功！");
+    }
+
+    /**获取流程变量*/
+    @Test
+    public void getVariables(){
+        /**与任务（正在执行）*/
+        TaskService taskService = processEngine().getTaskService();
+        //任务ID
+        String taskId = "45005";  //act_ru_task表里id
+        /**一：获取流程变量，使用基本数据类型*/
+//      Integer days = (Integer) taskService.getVariable(taskId, "请假天数");
+//      Date date = (Date) taskService.getVariable(taskId, "请假日期");
+//      String resean = (String) taskService.getVariable(taskId, "请假原因");
+//      System.out.println("请假天数："+days);
+//      System.out.println("请假日期："+date);
+//      System.out.println("请假原因："+resean);
+        /**二：获取流程变量，使用javabean类型*/
+        Person p = (Person)taskService.getVariable(taskId, "人员信息(添加固定版本)");
+        System.out.println(p.getId()+"        "+p.getName());
+    }
+
+    /**查询流程变量的历史表*/
+    @Test
+    public void findHistoryProcessVariables(){
+        List<HistoricVariableInstance> list = processEngine().getHistoryService()//
+                .createHistoricVariableInstanceQuery()//创建一个历史的流程变量查询对象
+                .variableName("人员信息(添加固定版本)")
+                .list();
+        if(list!=null && list.size()>0){
+            for(HistoricVariableInstance hvi:list){
+                System.out.println(hvi.getId()+"   "+hvi.getProcessInstanceId()+"   "+hvi.getVariableName()+"   "+hvi.getVariableTypeName()+"    "+hvi.getValue());
+                System.out.println("###############################################");
+                Person p = (Person)hvi.getValue();
+                System.out.println(p.getId()+"        "+p.getName());
+            }
+        }
+    }
+
+    /**
+     * 历史任务查询
+     */
+    @Test
+    public void historyTaskList(){
+        List<HistoricTaskInstance> list=processEngine().getHistoryService() // 历史任务Service
+                .createHistoricTaskInstanceQuery() // 创建历史任务实例查询
+                //.finished() // 查询已经完成的任务
+                .processInstanceId("30001")
+                .list();
+        for(HistoricTaskInstance hti:list){
+            System.out.println("任务ID:"+hti.getId());
+            System.out.println("流程实例ID:"+hti.getProcessInstanceId());
+            System.out.println("办理人："+hti.getAssignee());
+            System.out.println("创建时间："+hti.getCreateTime());
+            System.out.println("结束时间："+hti.getEndTime());
+            System.out.println("===========================");
+        }
     }
 }
